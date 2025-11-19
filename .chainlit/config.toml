@@ -1,0 +1,104 @@
+[project]
+# Zmienne środowiskowe wymagane od użytkownika (puste, bo mamy .env)
+user_env = []
+
+# Czas trwania sesji w sekundach (1 godzina przy braku aktywności)
+session_timeout = 3600
+
+# Czas wygaśnięcia sesji użytkownika (15 dni)
+user_session_timeout = 1296000
+
+# Cache (wyłączony, żeby widzieć zmiany w kodzie agentów od razu)
+cache = false
+
+# Czy zapisywać klucze API w bazie (wyłączone dla bezpieczeństwa)
+persist_user_env = false
+
+# Czy maskować klucze API w UI
+mask_user_env = false
+
+# Dozwolone źródła (dla localhosta dajemy wszystko)
+allow_origins = ["*"]
+
+[features]
+# Przetwarzanie HTML w wiadomościach (wyłączone, agenci używają Markdown)
+unsafe_allow_html = false
+
+# Wzory matematyczne (Latex)
+latex = false
+
+# Automatyczne przewijanie do nowej wiadomości
+user_message_autoscroll = true
+
+# Automatyczne tagowanie wątków
+auto_tag_thread = true
+
+# Pozwól użytkownikowi edytować swoje wiadomości (przydatne przy poprawianiu promptów)
+edit_message = true
+
+# Udostępnianie wątków (wyłączone w wersji lokalnej)
+allow_thread_sharing = false
+
+[features.slack]
+reaction_on_message_received = false
+
+# --- WYSYŁANIE PLIKÓW ---
+[features.spontaneous_file_upload]
+    # Ważne: Włączone, żebyś mógł wysłać PDF ze specyfikacją
+    enabled = true
+    # Akceptuj wszystkie typy plików
+    accept = ["*/*"]
+    max_files = 5
+    max_size_mb = 500
+
+[features.audio]
+    enabled = false
+    sample_rate = 24000
+
+[features.mcp]
+    enabled = false
+
+[UI]
+# --- PERSONALIZACJA WYGLĄDU ---
+
+# Nazwa wyświetlana w nagłówku i na karcie przeglądarki
+name = "AgileFlow"
+
+# Opis pod nazwą (widoczny na ekranie startowym)
+description = "Enterprise Autonomous Dev Team"
+
+# WYMUSZENIE CIEMNEGO MOTYWU
+# To sprawi, że Twój customowy CSS będzie wyglądał dobrze.
+default_theme = "dark"
+
+# Układ strony: "wide" jest lepszy do czytania kodu
+layout = "wide"
+
+# Domyślny stan paska bocznego
+default_sidebar_state = "open"
+
+# --- AI THINKING PROCESS ---
+# "full" = pokazuje dymki z procesem myślowym i użyciem narzędzi.
+# "hidden" = pokazuje tylko ostateczną odpowiedź (mniej "hakerskie").
+cot = "full"
+
+# --- PODPIĘCIE STYLÓW ---
+# Ścieżka do pliku CSS w folderze public
+custom_css = "/public/style.css"
+
+# Styl alertów
+alert_style = "modern"
+
+# --- UKRYWANIE BRANDINGU ---
+# Ustawienie na true ukrywa napis "Built with Chainlit" w stopce
+hide_quote = true
+
+# --- LOGO I AVATARY ---
+# Zostaw puste - Chainlit automatycznie pobierze:
+# public/logo_dark.png (jako logo)
+# public/favicon.png (jako ikonka strony)
+logo_file_url = ""
+default_avatar_file_url = ""
+
+[meta]
+generated_by = "2.9.0"

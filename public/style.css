@@ -1,0 +1,129 @@
+/* --- DEEP SPACE THEME FOR AGILEFLOW --- */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+    --bg-deep: #050507;
+    --bg-panel: #121214;
+    --accent-primary: #6366f1; /* Indigo Neon */
+    --accent-glow: rgba(99, 102, 241, 0.3);
+    --text-bright: #ffffff;
+    --text-muted: #9ca3af;
+    --border-color: #27272a;
+}
+
+/* 1. TŁO APLIKACJI - Totalna Czerń z Subtelną Siatką */
+body {
+    background-color: var(--bg-deep) !important;
+    color: var(--text-bright) !important;
+    font-family: 'Inter', sans-serif !important;
+    background-image: 
+        radial-gradient(circle at 50% 0%, #1e1b4b 0%, transparent 70%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 40px 40px, 40px 40px !important;
+}
+
+/* 2. NAPRAWA BIAŁYCH ELEMENTÓW (Nadpisanie Material UI) */
+.MuiPaper-root, .MuiCard-root, .MuiAccordion-root {
+    background-color: var(--bg-panel) !important;
+    color: var(--text-bright) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: none !important;
+}
+
+/* 3. POLE TEKSTOWE (To białe na dole) - Teraz będzie ciemne */
+#chat-input {
+    background-color: #09090b !important;
+    border: 1px solid #3f3f46 !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+}
+
+#chat-input:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 2px var(--accent-glow) !important;
+}
+
+/* Kontener pola tekstowego (usuwa białe tło pod spodem) */
+.MuiInputBase-root {
+    background-color: transparent !important;
+}
+footer {
+    background-color: transparent !important;
+}
+
+/* 4. DYMKI CZATOWE */
+
+/* Użytkownik (Ty) - Gradient Indigo */
+.user-message {
+    background: linear-gradient(135deg, #4f46e5, #3730a3) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 18px 18px 4px 18px !important;
+}
+
+/* Agent AI - Ciemny panel z ramką */
+.assistant-message {
+    background-color: #18181b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 18px 18px 18px 4px !important;
+    color: #e4e4e7 !important;
+}
+
+/* 5. BLOKI KODU I NAGŁÓWKI */
+code, pre {
+    font-family: 'JetBrains Mono', monospace !important;
+    background-color: #000000 !important;
+    border: 1px solid #333 !important;
+    border-radius: 6px;
+}
+
+/* Nagłówki Agentów (np. Product Owner) */
+.markdown-body h3 {
+    color: var(--accent-primary) !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+    border-left: 3px solid var(--accent-primary);
+    padding-left: 10px;
+}
+
+/* 6. BUTTONY */
+.send-button {
+    background-color: var(--accent-primary) !important;
+    color: white !important;
+    border-radius: 8px !important;
+}
+
+/* Przycisk "Stop" generowania */
+button[aria-label="Stop"] {
+    border: 1px solid red !important;
+    color: red !important;
+}
+
+/* 7. CUSTOM SCROLLBAR (Pasek przewijania) */
+/* Cały pasek - wąski i dyskretny */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+/* Tło paska - przezroczyste (żeby nie było widać szarego bloku) */
+::-webkit-scrollbar-track {
+    background: transparent; 
+}
+
+/* Suwak właściwy - ciemnoszary, zaokrąglony */
+::-webkit-scrollbar-thumb {
+    background: #3f3f46; 
+    border-radius: 10px;
+}
+
+/* Suwak po najechaniu - świeci na kolor akcentowy */
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
+}
