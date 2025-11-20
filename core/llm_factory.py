@@ -7,7 +7,6 @@ load_dotenv()
 def _get_client_kwargs():
     """
     Konfiguracja klienta HTTP.
-    Obsługuje wyłączenie SSL i Tokeny Auth.
     """
     kwargs = {}
     
@@ -24,32 +23,33 @@ def _get_client_kwargs():
 
 def get_chat_model(model_name: str = None, temperature: float = 0.2):
     """
-    Zwraca model ChatOllama z ustawieniami 'Battle-Tested':
-    - Timeout 300s (na cold start)
-    - Context 8k (na długi kod)
+    Zwraca model ChatOllama z logowaniem DEBUGOWANIA.
     """
+    # Jeśli nie podano modelu, bierzemy z .env, a jak tam nie ma - bezpieczny fallback na mniejszy model
     if not model_name:
-        model_name = os.getenv("MODEL_REASONING", "llama3.3:70b")
+        model_name = os.getenv("MODEL_REASONING", "qwen3-coder:30b")
         
+    # --- TU JEST KLUCZOWA ZMIANA ---
+    # Wypisujemy w terminalu co się dzieje.
+    print(f"🔌 [SYSTEM] Inicjalizuję połączenie z Ollama...")
+    print(f"   -> Adres: {os.getenv('OLLAMA_BASE_URL')}")
+    print(f"   -> Model: {model_name}")
+    # -------------------------------
+
     return ChatOllama(
         base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         model=model_name,
-        
-        # --- CRITICAL FIXES OD KOLEGI ---
         temperature=temperature,
-        timeout=300.0,    # 5 minut timeoutu (modele 70B wolno wstają)
-        num_ctx=8192,     # Większe okno kontekstowe (nie utnie kodu)
-        # --------------------------------
         
+        # Fixy sieciowe
+        timeout=300.0,    
+        num_ctx=8192,
         client_kwargs=_get_client_kwargs()
     )
 
 def get_embeddings_model():
-    """
-    Model do RAG z tymi samymi fixami sieciowymi.
-    """
     return OllamaEmbeddings(
         base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        model=os.getenv("MODEL_EMBEDDINGS", "embeddinggemma:300m"),
+        model=os.getenv("MODEL_EMBEDDINGS", "nomic-embed-text"),
         client_kwargs=_get_client_kwargs()
     )
