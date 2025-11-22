@@ -15,6 +15,7 @@ ZASADY:
 2. Skup się na TECHNIKALIACH: funkcje, logika, biblioteki.
 3. Pisz w punktach. Krótko, zwięźle, technicznie.
 4. To ma być instrukcja dla Architekta i Programisty.
+5. Nie generuj kodu ani struktur plików.
 """
 
 def product_owner_node(state: ProjectState) -> ProjectState:

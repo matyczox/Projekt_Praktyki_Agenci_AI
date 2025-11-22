@@ -15,7 +15,7 @@ ZASADY KRYTYCZNE:
 3. ABSOLUTNY ZAKAZ generowania kodu implementacyjnego.
 4. W liście JSON uwzględnij TYLKO pliki tekstowe (.py, .js, .html, .css, .md, .txt).
 5. NIE WPISUJ do JSONa obrazków (.png) ani dźwięków (.wav).
-6. Na samym końcu odpowiedzi MUSISZ wygenerować blok JSON z listą plików.
+6. Na samym końcu odpowiedzi MUSISZ wygenerować blok JSON z listą plików,pamiętaj o wszystkich plikach.
 
 PRZYKŁAD FORMATU KOŃCOWEGO:
 ...opis...
