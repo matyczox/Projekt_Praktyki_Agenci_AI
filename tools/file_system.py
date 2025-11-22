@@ -1,31 +1,31 @@
-import os
 from langchain_core.tools import tool
+from pathlib import Path
+import os
 
-# Folder, gdzie będą lądować projekty (bezpiecznik, żeby nie nadpisał Ci Windowsa)
-OUTPUT_DIR = "output_projects"
+# Ustawiamy sztywny root dla bezpieczeństwa
+PROJECT_ROOT = Path("output_projects")
 
 @tool
 def save_file(filename: str, code_content: str):
     """
-    Zapisuje kod do pliku o podanej nazwie. 
-    Użyj tego narzędzia, aby stworzyć pliki projektu.
-    
-    Args:
-        filename: Ścieżka do pliku (np. 'main.py' lub 'src/utils.py')
-        code_content: Pełny kod programu, który ma być w pliku.
+    Zapisuje kod w bezpiecznym katalogu output_projects.
     """
-    # 1. Budujemy pełną ścieżkę
-    full_path = os.path.join(OUTPUT_DIR, filename)
-    directory = os.path.dirname(full_path)
-    
-    # 2. Tworzymy foldery, jeśli ich nie ma (np. dla 'src/utils.py' tworzy 'src')
-    if directory and not os.path.exists(directory):
-        os.makedirs(directory, exist_ok=True)
-        
-    # 3. Zapisujemy plik
     try:
+        # 1. Rozwiązanie ścieżki
+        full_path = (PROJECT_ROOT / filename).resolve()
+        root_path = PROJECT_ROOT.resolve()
+
+        # 2. Security Check: Czy nie wychodzimy poza folder?
+        if not str(full_path).startswith(str(root_path)):
+            return f"❌ SECURITY ERROR: Próba zapisu poza dozwolony katalog: {filename}"
+
+        # 3. Tworzenie folderów
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # 4. Zapis
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(code_content)
-        return f"✅ Zapisano plik: {filename}"
+            
+        return f"✅ Zapisano: {filename}"
     except Exception as e:
         return f"❌ Błąd zapisu {filename}: {str(e)}"
