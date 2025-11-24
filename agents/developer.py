@@ -8,60 +8,49 @@ import re
 
 llm = get_chat_model(os.getenv("MODEL_CODER", "qwen3-coder:30b"), temperature=0.2)
 
-# --- ZMIENNE POMOCNICZE (Żeby czat nie ucinał kodu) ---
-MD_OPEN = "```" + "python"
-MD_CLOSE = "```"
-
 # --- PROMPTY ---
-# Używamy standardowych klamr { }, LangChain podstawi tu wartości bezpiecznie.
 
 FILE_LIST_PROMPT = """
 Jesteś Tech Leadem. Zwróć JSON z listą plików do utworzenia na podstawie planu.
-Przykład: ["main.py", "utils.py"]
+Przykład: ["main.py", "utils.py", "requirements.txt", "README.md"]
+
+WAŻNE: ZAWSZE uwzględnij requirements.txt i README.md jeśli projekt używa bibliotek.
 
 Plan Architekta:
 {plan}
 """
 
 CODE_GEN_PROMPT = """
-Jesteś Developerem. Napisz kod pliku: {filename}.
+You are a Python code generator.
 
-WYMAGANIA:
-1. Kod MUSI być w bloku markdown:
-""" + MD_OPEN + """
-...kod...
-""" + MD_CLOSE + """
-2. Nie pisz wstępów.
-3. Kod musi być kompletny.
+Write complete, working code for file: {filename}
 
-Plan Architekta:
-{plan}
+Requirements: {plan}
 
-Feedback QA:
-{feedback}
+QA feedback: {feedback}
+
+Write the code now (no explanations, no markdown blocks, just pure code):
 """
 
 def extract_json_list(text):
+    """Wyciąga listę plików z odpowiedzi modelu"""
     try:
+        # Próba 1: JSON w bloku markdown
         match = re.search(r"```json\n(.*?)\n```", text, re.DOTALL)
-        if match: return json.loads(match.group(1))
+        if match: 
+            return json.loads(match.group(1))
+        
+        # Próba 2: Surowy JSON
         match = re.search(r'\[.*\]', text, re.DOTALL)
-        if match: return json.loads(match.group())
+        if match: 
+            return json.loads(match.group())
+        
+        # Próba 3: Bezpośredni parse
         return json.loads(text)
-    except:
+    except Exception as e:
+        print(f"⚠️  Błąd parsowania listy plików: {e}")
+        print(f"Raw response: {text[:200]}")
         return ["main.py"]
-
-def clean_code_content(text):
-    # Regex łapiący treść między ```
-    match = re.search(r"```(?:\w+)?\s*(.*?)```", text, re.DOTALL)
-    if match and match.group(1).strip():
-        return match.group(1).strip()
-    
-    # Fallback ręczny
-    clean = text.replace("```python", "").replace("```", "").strip()
-    if clean: return clean
-    
-    return f"# DEBUG: BRAK KODU W ODPOWIEDZI.\n# RAW:\n{text}"
 
 def developer_node(state: ProjectState) -> ProjectState:
     tech_stack = state.get("tech_stack", "")
@@ -70,8 +59,7 @@ def developer_node(state: ProjectState) -> ProjectState:
 
     print(f"\n👨‍💻 Developer: Iteracja {iteration}. Pobieram listę plików...")
     
-    # --- FIX 1: Bezpieczne przekazywanie planu ---
-    # Nie używamy .format(), tylko przekazujemy słownik do invoke
+    # === KROK 1: Pobierz listę plików ===
     prompt_files = ChatPromptTemplate.from_messages([
         ("system", FILE_LIST_PROMPT)
     ])
@@ -80,40 +68,57 @@ def developer_node(state: ProjectState) -> ProjectState:
     
     files = extract_json_list(response_files.content)
     
-    if not files: files = ["main.py"]
+    if not files or len(files) == 0:
+        files = ["main.py"]
+    
     print(f"📋 Developer Zadania: {files}")
     
     generated = {}
     logs = []
     
-    # --- FIX 2: Bezpieczne przekazywanie zmiennych do generatora ---
+    # === KROK 2: Generuj kod dla każdego pliku ===
     for filename in files:
-        print(f"   🔨 Piszę kod: {filename}...")
+        print(f"\n   🔨 Piszę kod: {filename}...")
         
         prompt_code = ChatPromptTemplate.from_messages([
             ("system", CODE_GEN_PROMPT)
         ])
         
         chain_code = prompt_code | llm
-        
-        # LangChain sam bezpiecznie podstawi te wartości, 
-        # ignorując klamry wewnątrz treści zmiennych (tech_stack)
         response_code = chain_code.invoke({
             "filename": filename,
             "plan": tech_stack,
             "feedback": qa_feedback
         })
         
-        raw_resp = response_code.content
+        # ============================================
+        # RAW DUMP MODE - ZERO PARSOWANIA
+        # ============================================
+        raw_content = response_code.content
         
-        # --- DEBUG LOG ---
-        print(f"      🔴 [DEBUG RAW]: {raw_resp[:50].replace(chr(10), ' ')}...")
+        print(f"      📏 Model zwrócił: {len(raw_content)} znaków")
+        print(f"      👀 Pierwsze 200 znaków:")
+        print(f"         {raw_content[:200].replace(chr(10), '↵')}")
         
-        final_code = clean_code_content(raw_resp)
-        save_msg = save_file.invoke({"filename": filename, "code_content": final_code})
+        # Sprawdź czy model w ogóle coś zwrócił
+        if not raw_content or len(raw_content.strip()) == 0:
+            print(f"      ❌ BŁĄD: Model zwrócił pusty string dla {filename}!")
+            raw_content = f"# BŁĄD: Model nie wygenerował kodu dla {filename}\n# Sprawdź logi Ollama"
+        
+        # Zapisujemy DOKŁADNIE to co model zwrócił
+        save_msg = save_file.invoke({
+            "filename": filename, 
+            "code_content": raw_content
+        })
         
         print(f"      💾 {save_msg}")
-        generated[filename] = final_code
-        logs.append(f"{filename}: {save_msg}")
+        
+        generated[filename] = raw_content
+        logs.append(f"{filename}: {len(raw_content)} znaków")
 
-    return {"generated_code": generated, "logs": logs}
+    print(f"\n✅ Developer zakończył pracę. Wygenerowano {len(generated)} plików.")
+    
+    return {
+        "generated_code": generated, 
+        "logs": logs
+    }
