@@ -46,7 +46,7 @@ def get_chat_model(model_name: str = None, temperature: float = 0.2):
     elif "codellama" in model_name.lower():
         ctx_size = 16384  # 16k dla CodeLlama
     else:
-        ctx_size = 8192   # Fallback dla nieznanych modeli
+        ctx_size = 16384   # Fallback dla nieznanych modeli
     
     print(f"   -> Context: {ctx_size} tokenów")
     # ============================================
