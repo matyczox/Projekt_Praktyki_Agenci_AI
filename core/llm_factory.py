@@ -8,51 +8,42 @@ OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_TOKEN = os.getenv("OLLAMA_TOKEN", "")
 VERIFY_SSL = os.getenv("OLLAMA_VERIFY_SSL", "False").lower() == "true"
 
-def get_llm(model_name: str, temperature: float = 0.1, num_ctx: int = 8192):
+def get_llm(model_name: str, temperature: float = 0.1):
     """
-    Tworzy instancję modelu z odpowiednimi parametrami (Timeout, SSL, Context).
+    Automatycznie dobiera maksymalny kontekst w zależności od modelu.
     """
-    print(f"🔌 [SYSTEM] Inicjalizuję model...")
-    print(f"   -> Adres: {OLLAMA_URL}")
-    print(f"   -> Model: {model_name}")
-    print(f"   -> Context: {num_ctx} tokenów")
+    if "qwen" in model_name.lower() and "coder" in model_name.lower():
+        num_ctx = 200000   # Qwen3-coder łyka wszystko
+        print(f"Qwen3-coder:30b → 200 000 tokenów (kodowanie full power!)")
+    elif "llama3.3" in model_name.lower():
+        num_ctx = 128000   # Llama3.3 oficjalnie 128k
+        print(f"Llama3.3:70b → 128 000 tokenów (reasoning)")
+    else:
+        num_ctx = 32768
     
     return ChatOllama(
         model=model_name,
         base_url=OLLAMA_URL,
         temperature=temperature,
         num_ctx=num_ctx,
-        timeout=300.0,  # 5 minut
+        timeout=900.0,
         client_kwargs={
             "verify": VERIFY_SSL,
             "headers": {"Authorization": f"Bearer {OLLAMA_TOKEN}"} if OLLAMA_TOKEN else {}
         }
     )
 
-# Alias dla kompatybilności z Twoim kodem
-def get_chat_model(model_name: str = None, temperature: float = 0.2):
-    """
-    Wrapper dla kompatybilności z Twoim kodem.
-    """
-    if not model_name:
-        model_name = os.getenv("MODEL_REASONING", "llama3.3:70b")
-    
-    # Dobierz context na podstawie modelu
-    if "qwen" in model_name.lower():
-        num_ctx = 24000  # Dla Qwen
-    elif "llama3.3" in model_name.lower():
-        num_ctx = 32000
-    elif "bielik" in model_name.lower():
-        num_ctx = 8192  # Dla bielik2.6:11b
-    else:
-        num_ctx = 8192
-    
-    return get_llm(model_name, temperature=temperature, num_ctx=num_ctx)
+# Dla reszty agentów (PO, Architekt, QA) – zawsze Llama
+def get_chat_model(temperature: float = 0.2):
+    model = os.getenv("MODEL_REASONING", "llama3.3:70b")
+    return get_llm(model, temperature)
+
+# Dla Developera – zawsze Qwen
+def get_coder_model(temperature: float = 0.0):
+    model = os.getenv("MODEL_CODER", "qwen3-coder:30b")
+    return get_llm(model, temperature)
 
 def get_embeddings_model():
-    """
-    Dla RAG – używa MODEL_EMBEDDINGS z .env (nomic-embed-text).
-    """
     model = os.getenv("MODEL_EMBEDDINGS", "nomic-embed-text")
     return OllamaEmbeddings(
         base_url=OLLAMA_URL,

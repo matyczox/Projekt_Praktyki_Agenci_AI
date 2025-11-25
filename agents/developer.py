@@ -1,172 +1,148 @@
+# agents/developer.py
 import re
-import os
 from langchain_core.messages import SystemMessage, HumanMessage
 from core.state import ProjectState
 from tools.file_system import write_file, read_file, get_all_file_paths
-from core.llm_factory import get_llm
-from core.rag import retrieve_context  # RAG integracja
+from core.llm_factory import get_coder_model  # ← tylko Qwen3-coder:30b
+from core.rag import retrieve_context
+
 
 def parse_and_save_files(ai_response: str):
-    """Parsuje odpowiedź AI i zapisuje pliki."""
-    if not ai_response: 
+    """Parsuje odpowiedź AI i zapisuje pliki w formacie ### FILE: ... ### ENDFILE"""
+    if not ai_response:
         return []
 
-    # Regex szuka bloków: ### FILE: nazwa ... ### ENDFILE
     pattern = r"###\s*FILE:\s*([^\n]+)\n(.*?)\n###\s*ENDFILE"
     matches = re.findall(pattern, ai_response, re.DOTALL | re.IGNORECASE)
-    created_files = []
-    
-    # Fallback
-    if not matches and len(ai_response.strip()) > 50:
-        write_file("raw_code.txt", ai_response)
-        return ["raw_code.txt"]
+    saved_files = []
+
+    # Fallback – jeśli model nie użył formatu
+    if not matches and len(ai_response.strip()) > 100:
+        write_file("raw_developer_response.txt", ai_response)
+        saved_files.append("raw_developer_response.txt")
+        return saved_files
 
     for filename, content in matches:
         filename = filename.strip()
         content = content.strip()
-        
-        # Usuwanie śmieci (markdown, komentarze)
-        content = re.sub(r"^```[a-zA-Z]*\n", "", content)
-        content = re.sub(r"\n```$", "", content)
-        
+
+        # Usuń ewentualne bloki ```python / ```
+        content = re.sub(r"^```[a-zA-Z]*\n", "", content, flags=re.MULTILINE)
+        content = re.sub(r"\n```$", "", content, flags=re.MULTILINE)
+
         write_file(filename, content)
-        print(f"-> Zaktualizowano plik: {filename}")
-        created_files.append(filename)
-        
-    return created_files
+        print(f"Developer zapisano plik: {filename}")
+        saved_files.append(filename)
+
+    return saved_files
+
 
 def developer_node(state: ProjectState):
     """
-    Developer node – z RAG dla lepszego kontekstu.
+    Najlepszy Developer na świecie:
+    - tylko qwen3-coder:30b
+    - 200k kontekstu
+    - RAG z wymagań i planu
+    - perfekcyjne naprawy kodu
     """
     plan = state.get("tech_stack", "Brak planu.")
     feedback = state.get("qa_feedback", "")
-    current_revisions = state.get("iteration_count", 0)
-    vectorstore = state.get("vectorstore")  # RAG z state
-    
-    # RAG: Pobierz relewantny kontekst (np. z wymagań)
-    rag_query = f"Napraw lub zbuduj kod dla: {plan[:100]}..."  # Krótki query
+    iteration = state.get("iteration_count", 0)
+    vectorstore = state.get("vectorstore")
+
+    # RAG – klucz do idealnych napraw
+    rag_query = f"Jak zrealizować: {plan[:150]}... (z uwzględnieniem feedbacku QA)"
     rag_context = retrieve_context(rag_query, vectorstore)
-    
-    existing_files = get_all_file_paths()
+
+    # Wczytaj cały istniejący kod
     code_context = ""
-    
+    existing_files = get_all_file_paths()
     if existing_files:
-        print(f"--- PROGRAMISTA: ANALIZA {len(existing_files)} PLIKÓW + RAG ---")
-        for fname in existing_files:
-            # Ignorujemy pliki binarne/systemowe, czytamy tylko kod
-            if fname.endswith(('.py', '.js', '.html', '.css', '.cs', '.json', '.md', '.txt')):
-                content = read_file(fname)
-                if content:  # Tylko jeśli plik ma zawartość
-                    code_context += f"\n=== PLIK ISTNIEJĄCY: {fname} ===\n{content}\n" + "="*40 + "\n"
+        print(f"Developer: Analizuję {len(existing_files)} istniejących plików + RAG")
+        for file_path in existing_files:
+            if file_path.endswith(('.py', '.cs', '.ts', '.js', '.html', '.css', '.json', '.md', '.csproj', '.angular-cli.json')):
+                content = read_file(file_path)
+                if content:
+                    code_context += f"\n=== {file_path} ===\n{content}\n{'='*60}\n"
     else:
-        code_context = "BRAK PLIKÓW (Nowy projekt)."
+        code_context = "Brak istniejących plików – nowy projekt."
 
-    # Konfiguracja modelu
-    model_name = os.getenv("MODEL_CODER", "llama3.3:70b")
-    
-    # WAŻNE: Używamy get_llm (jak kolega), nie get_chat_model
-    # Bardzo duży kontekst, żeby zmieścił cały stary kod + nowy kod + RAG
-    llm = get_llm(model_name, temperature=0.0, num_ctx=24000)
+    # Tryb pracy
+    if feedback and "REJECT" in feedback.upper():
+        mode = "NAPRAWA BŁĘDÓW"
+        task = f"""
+QA odrzucił kod z powodu:
+{feedback}
 
-    # ============================================
-    # 2. PRZYGOTOWANIE INSTRUKCJI
-    # ============================================
-    if feedback and "REJECT" in str(feedback).upper():
-        mode = "TRYB NAPRAWY (DEBUGGING) z RAG"
-        task_desc = f"Tester zgłosił błędy:\n{feedback}\nTwoim zadaniem jest je naprawić. Użyj RAG kontekstu: {rag_context}"
-        current_revisions += 1
-    elif existing_files:
-        mode = "TRYB ROZWOJU (REFACTORING) z RAG"
-        task_desc = f"Kontynuuj rozwój projektu zgodnie z planem architekta. Użyj RAG kontekstu: {rag_context}"
+Twoim zadaniem jest naprawić WSZYSTKIE błędy.
+Użyj kontekstu RAG poniżej – zawiera wymagania i plan projektu.
+"""
     else:
-        mode = "TRYB TWORZENIA (GREENFIELD) z RAG"
-        task_desc = f"Zbuduj pierwszą działającą wersję projektu zgodnie z planem. Użyj RAG kontekstu: {rag_context}"
+        mode = "TWORZENIE / ROZWÓJ"
+        task = "Wygeneruj kompletną, działającą wersję projektu zgodnie z planem architekta."
 
-    print(f"--- PROGRAMISTA: {mode} ---")
+    print(f"Developer: {mode} (iteracja {iteration + 1})")
 
-    # 3. SYSTEM PROMPT (jak u kolegi) – z osobowością perfekcjonisty
-    # ============================================
-    sys_msg = SystemMessage(content=f"""
-Jesteś Expert Software Engineerem-perfekcjonistą specjalizującym się w refaktoryzacji.
-Twoim celem jest dostarczenie DZIAŁAJĄCEGO, KOMPLETNEGO kodu. Używasz RAG do lepszego zrozumienia wymagań.
+    # Qwen3-coder:30b – pełna moc
+    llm = get_coder_model(temperature=0.0)  # ← 200k tokenów, zero ograniczeń
 
---- ZASADY EDYCJI PLIKÓW (KRYTYCZNE) ---
-1. Jeśli edytujesz plik, musisz zwrócić jego PEŁNĄ, NOWĄ ZAWARTOŚĆ.
-2. ABSOLUTNY ZAKAZ używania skrótów: `// ... reszta kodu`, `# ... existing code`. TO PSUJE PLIK.
-3. Musisz zachować istniejące funkcjonalności, chyba że plan każe je usunąć.
-4. Upewnij się, że nowe funkcje (np. nowa klasa) są faktycznie WYWOŁYWANE w głównym kodzie (np. w game loop).
+    # System prompt – perfekcjonista
+    system_prompt = SystemMessage(content="""
+Jesteś Senior Fullstack Developerem z 15-letnim doświadczeniem.
+Twoja specjalność: perfekcyjne, działające od razu aplikacje w Pythonie, .NET, Angularze, React itd.
 
---- FORMAT ODPOWIEDZI ---
-Krok 1: ANALIZA (Jako komentarz). Napisz krótko: co zmienisz, w którym miejscu. Uwzględnij RAG.
-Krok 2: KOD. Użyj znaczników:
-
-### FILE: sciezka/plik.ext
-PEŁNY_KOD_PLIKU
-### ENDFILE
+ZASADY ŻELAZNE:
+- Zawsze zwracaj PEŁNĄ zawartość edytowanych plików
+- NIGDY nie używaj // ... ani # ... – to psuje projekt
+- Przy naprawie zmieniaj TYLKO to, co jest zepsute
+- Zachowaj wszystkie istniejące nazwy klas, metod, zmiennych
+- Używaj RAG kontekstu do przypomnienia wymagań użytkownika
+- Format odpowiedzi: tylko bloki ### FILE: ... ### ENDFILE
 """)
 
-    # 4. USER PROMPT (konkretne dane)
-    # ============================================
-    user_msg = HumanMessage(content=f"""
-TRYB PRACY: {mode}
+    user_prompt = HumanMessage(content=f"""
+TRYB: {mode}
 
-PLAN ARCHITEKTA (CO ZROBIĆ):
+PLAN ARCHITEKTA:
 {plan}
 
-ZADANIE SZCZEGÓŁOWE:
-{task_desc}
+ZADANIE:
+{task}
 
-AKTUALNY KOD PROJEKTU (KONTEKST):
+RAG KONTEKST (wymagania + plan):
+{rag_context}
+
+ISTNIEJĄCY KOD PROJEKTU:
 {code_context}
 
-Rozpocznij od analizy zmian (z RAG), a potem wygeneruj PEŁNE pliki.
+Twoja kolej: przeanalizuj, a potem zwróć poprawione lub nowe pliki w formacie ### FILE: ...
 """)
-    
-    # 5. WYWOŁANIE MODELU (jak u kolegi!)
-    # ============================================
-    full_response = ""
-    try:
-        print("--- WYSYŁANIE DO AI (To może chwilę potrwać)... ---")
-        
-        # KLUCZOWE: Używamy listy [SystemMessage, HumanMessage]
-        response_obj = llm.invoke([sys_msg, user_msg])
-        full_response = response_obj.content
-        
-        print(f"-> Otrzymano {len(full_response)} znaków.")
-        
-    except Exception as e:
-        err = f"BŁĄD LLM: {e}"
-        print(err)
-        write_file("error_log.txt", err)
 
-    # 6. PARSOWANIE I ZAPIS
-    # ============================================
+    print("Developer: Wysyłam zadanie do Qwen3-coder:30b (to może potrwać 20–60 sekund)...")
+    try:
+        response = llm.invoke([system_prompt, user_prompt])
+        full_response = response.content
+        print(f"Developer: Otrzymano odpowiedź ({len(full_response):,} znaków)")
+    except Exception as e:
+        full_response = f"Błąd modelu: {e}"
+        print(full_response)
+
+    # Zapisujemy pliki
     saved_files = parse_and_save_files(full_response)
-    
-    # Jeśli Coder nic nie zwrócił, a mieliśmy pliki
+
+    # Bezpiecznik – jeśli nic nie zwrócił
     if not saved_files and existing_files:
         saved_files = existing_files
-    elif not saved_files:
-        error_content = f"Brak kodu. Odpowiedź AI:\n{full_response[:500]}"
-        write_file("error_report.txt", error_content)
-        saved_files.append("error_report.txt")
 
-    # 7. WCZYTAJ PLIKI Z POWROTEM DO STATE
-    # ============================================
-    generated = {}
-    for fname in saved_files:
-        content = read_file(fname)
-        if content:
-            generated[fname] = content
-        else:
-            print(f"⚠️  Nie można wczytać {fname}")
-            generated[fname] = f"# Błąd wczytania\npass\n"
+    # Wczytujemy z powrotem do state
+    generated_code = {}
+    for file in saved_files:
+        content = read_file(file)
+        generated_code[file] = content if content else "# BŁĄD ODCZYTU PLIKU"
 
     return {
-        "generated_code": generated,
-        "logs": [f"Zaktualizowano pliki: {saved_files} (z RAG)"],
-        "iteration_count": current_revisions,
-        "feedback": None,
-        "vectorstore": vectorstore  # Przekazuj RAG dalej
+        "generated_code": generated_code,
+        "iteration_count": iteration + 1,
+        "logs": [f"Developer (Qwen3): zapisano {len(saved_files)} plików"],
+        "vectorstore": vectorstore  # przekazujemy RAG dalej
     }
