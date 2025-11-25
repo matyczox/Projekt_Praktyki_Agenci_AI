@@ -26,29 +26,39 @@ def get_chat_model(model_name: str = None, temperature: float = 0.2):
     Zwraca model ChatOllama z DUŻYM context window.
     """
     if not model_name:
-        model_name = os.getenv("MODEL_REASONING", "qwen3-coder:30b")
+        model_name = os.getenv("MODEL_REASONING", "llama3.3:70b")
         
     print(f"🔌 [SYSTEM] Inicjalizuję połączenie z Ollama...")
     print(f"   -> Adres: {os.getenv('OLLAMA_BASE_URL')}")
     print(f"   -> Model: {model_name}")
 
-    # ============================================
-    # KRYTYCZNA ZMIANA: Zwiększamy context window
-    # ============================================
-    # Qwen 3 Coder 30B obsługuje do 32k tokenów
-    # Llama 3.3 70B obsługuje do 128k tokenów
-    
     # Dobierz context automatycznie na podstawie modelu
     if "qwen" in model_name.lower():
-        ctx_size = 24576  # 24k dla Qwen (bezpieczna wartość)
+        ctx_size = 24576  # 24k dla Qwen
     elif "llama3.3" in model_name.lower():
         ctx_size = 32768  # 32k dla Llama 3.3
     elif "codellama" in model_name.lower():
         ctx_size = 16384  # 16k dla CodeLlama
     else:
-        ctx_size = 16384   # Fallback dla nieznanych modeli
+        ctx_size = 8192   # Fallback
     
     print(f"   -> Context: {ctx_size} tokenów")
+
+    # ============================================
+    # SPECJALNE OPCJE DLA QWEN (FIX EMPTY OUTPUT)
+    # ============================================
+    model_kwargs = {}
+    
+    if "qwen" in model_name.lower():
+        # Qwen potrzebuje tych parametrów żeby generować więcej
+        model_kwargs = {
+            "top_p": 0.9,           # Diversity sampling
+            "top_k": 40,            # Rozważ top 40 tokenów
+            "repeat_penalty": 1.1,  # Nie powtarzaj się
+            "num_predict": 2048,    # Generuj minimum 2048 tokenów (był default 128!)
+        }
+        print(f"   -> Tryb: Qwen Extended Generation")
+        print(f"   -> Min tokens: 2048")
     # ============================================
 
     return ChatOllama(
@@ -57,10 +67,13 @@ def get_chat_model(model_name: str = None, temperature: float = 0.2):
         temperature=temperature,
         
         # Zwiększony timeout dla dużych modeli
-        timeout=600.0,  # 10 minut (zamiast 5)
+        timeout=600.0,
         
-        # TUTAJ JEST ZMIANA - większy context
+        # Context window
         num_ctx=ctx_size,
+        
+        # Dodatkowe parametry modelu
+        **model_kwargs,
         
         client_kwargs=_get_client_kwargs()
     )
