@@ -1,16 +1,17 @@
+# agents/qa.py
 from langchain_core.prompts import ChatPromptTemplate
 from core.llm_factory import get_chat_model
 from core.state import ProjectState
-import os
 
-llm = get_chat_model(os.getenv("MODEL_REASONING", "llama3.3:70b"), temperature=0.1)
+# Tylko temperatura – model bierzemy z .env przez wrapper
+llm = get_chat_model(temperature=0.1)
 
 QA_SYSTEM_PROMPT = """
 Jesteś bardzo surowym QA Engineerem.
 
 ZASADY:
 1. Jeśli kod jest kompletny, działający, bezpieczny i ma README + requirements.txt → odpowiedz TYLKO: APPROVED
-2. Jeśli cokolwiek jest źle (brak pliku, błąd logiczny, zły format, brak main loop, crash przy uruchomieniu itp.) → odpowiedz:
+2. Jeśli cokolwiek jest źle → odpowiedz:
 REJECTED: <krótki, konkretny opis błędu i który plik>
 
 Przykłady:
@@ -26,7 +27,7 @@ def qa_node(state: ProjectState) -> ProjectState:
     if not code_dict:
         return {"qa_status": "REJECTED", "qa_feedback": "Brak wygenerowanego kodu!"}
 
-    # Sprawdzenie składni Pythona
+    # Sprawdzenie składni (Python + C# – bo obsługujemy .NET też)
     for filename, content in code_dict.items():
         if filename.endswith(".py"):
             try:
@@ -41,7 +42,7 @@ def qa_node(state: ProjectState) -> ProjectState:
         ("user", "Sprawdź kod:\n\n{code}")
     ])
 
-    print("QA: Analiza logiki przez LLM...")
+    print("QA: Analiza logiki przez Llama3.3:70b...")
     response = (prompt | llm).invoke({"code": full_code})
     decision = response.content.strip()
 
