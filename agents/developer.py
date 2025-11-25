@@ -1,151 +1,174 @@
-from langchain_core.prompts import ChatPromptTemplate
-from core.llm_factory import get_chat_model
-from core.state import ProjectState
-from tools.file_system import save_file
-import os
-import json
 import re
+import os
+from langchain_core.messages import SystemMessage, HumanMessage
+from core.state import ProjectState
+from tools.file_system import write_file, read_file, get_all_file_paths
+from core.llm_factory import get_llm
 
-# ============================================
-# KRYTYCZNE: Wyłącz streaming dla stabilności
-# ============================================
-llm = get_chat_model(
-    os.getenv("MODEL_CODER", "llama3.3:70b"), 
-    temperature=0.2
-)
+def parse_and_save_files(ai_response: str):
+    """Parsuje odpowiedź AI i zapisuje pliki."""
+    if not ai_response: 
+        return []
 
-# Wymuś non-streaming mode (może pomóc jeśli streaming ma problemy)
-llm.streaming = False
+    # Regex szuka bloków: ### FILE: nazwa ... ### ENDFILE
+    pattern = r"###\s*FILE:\s*([^\n]+)\n(.*?)\n###\s*ENDFILE"
+    matches = re.findall(pattern, ai_response, re.DOTALL | re.IGNORECASE)
+    created_files = []
+    
+    # Fallback
+    if not matches and len(ai_response.strip()) > 50:
+        write_file("raw_code.txt", ai_response)
+        return ["raw_code.txt"]
 
-# --- PROMPTY ---
+    for filename, content in matches:
+        filename = filename.strip()
+        content = content.strip()
+        
+        # Usuwanie śmieci (markdown, komentarze)
+        content = re.sub(r"^```[a-zA-Z]*\n", "", content)
+        content = re.sub(r"\n```$", "", content)
+        
+        write_file(filename, content)
+        print(f"-> Zaktualizowano plik: {filename}")
+        created_files.append(filename)
+        
+    return created_files
 
-FILE_LIST_PROMPT = """
-Jesteś Tech Leadem. Zwróć JSON z listą plików do utworzenia.
-Format: ["main.py", "utils.py", "requirements.txt", "README.md"]
+def developer_node(state: ProjectState):
+    """
+    Developer node - IDENTYCZNY styl jak u kolegi.
+    """
+    plan = state.get("tech_stack", "Brak planu.")
+    feedback = state.get("qa_feedback", "")
+    current_revisions = state.get("iteration_count", 0)
+    existing_code = state.get("generated_code", {})
+    
+    # Konfiguracja modelu
+    model_name = os.getenv("MODEL_CODER", "qwen3-coder:30b")
+    
+    # WAŻNE: Używamy get_llm (jak kolega), nie get_chat_model
+    # Bardzo duży kontekst, żeby zmieścił cały stary kod + nowy kod
+    llm = get_llm(model_name, temperature=0.0, num_ctx=24000)
 
-Plan:
+    # ============================================
+    # 1. WCZYTANIE KONTEKSTU (PAMIĘĆ)
+    # ============================================
+    existing_files = get_all_file_paths()
+    code_context = ""
+    
+    if existing_files:
+        print(f"--- PROGRAMISTA: ANALIZA {len(existing_files)} PLIKÓW ---")
+        for fname in existing_files:
+            # Ignorujemy pliki binarne/systemowe, czytamy tylko kod
+            if fname.endswith(('.py', '.js', '.html', '.css', '.cs', '.json', '.md', '.txt')):
+                content = read_file(fname)
+                if content:  # Tylko jeśli plik ma zawartość
+                    code_context += f"\n=== PLIK ISTNIEJĄCY: {fname} ===\n{content}\n" + "="*40 + "\n"
+    else:
+        code_context = "BRAK PLIKÓW (Nowy projekt)."
+
+    # ============================================
+    # 2. PRZYGOTOWANIE INSTRUKCJI
+    # ============================================
+    if feedback and "REJECT" in str(feedback).upper():
+        mode = "TRYB NAPRAWY (DEBUGGING)"
+        task_desc = f"Tester zgłosił błędy:\n{feedback}\nTwoim zadaniem jest je naprawić."
+        current_revisions += 1
+    elif existing_files:
+        mode = "TRYB ROZWOJU (REFACTORING)"
+        task_desc = "Zaimplementuj zmiany opisane w planie, modyfikując istniejący kod."
+    else:
+        mode = "TRYB TWORZENIA (GREENFIELD)"
+        task_desc = "Napisz kod od zera na podstawie planu."
+
+    print(f"--- PROGRAMISTA ({model_name}): {mode} ---")
+
+    # ============================================
+    # 3. SYSTEM PROMPT (jak u kolegi)
+    # ============================================
+    sys_msg = SystemMessage(content=f"""
+Jesteś Expert Software Engineerem specjalizującym się w refaktoryzacji.
+Twoim celem jest dostarczenie DZIAŁAJĄCEGO, KOMPLETNEGO kodu.
+
+--- ZASADY EDYCJI PLIKÓW (KRYTYCZNE) ---
+1. Jeśli edytujesz plik, musisz zwrócić jego PEŁNĄ, NOWĄ ZAWARTOŚĆ.
+2. ABSOLUTNY ZAKAZ używania skrótów: `// ... reszta kodu`, `# ... existing code`. TO PSUJE PLIK.
+3. Musisz zachować istniejące funkcjonalności, chyba że plan każe je usunąć.
+4. Upewnij się, że nowe funkcje (np. nowa klasa) są faktycznie WYWOŁYWANE w głównym kodzie (np. w game loop).
+
+--- FORMAT ODPOWIEDZI ---
+Krok 1: ANALIZA (Jako komentarz). Napisz krótko: co zmienisz, w którym miejscu.
+Krok 2: KOD. Użyj znaczników:
+
+### FILE: sciezka/plik.ext
+PEŁNY_KOD_PLIKU
+### ENDFILE
+""")
+
+    # ============================================
+    # 4. USER PROMPT (konkretne dane)
+    # ============================================
+    user_msg = HumanMessage(content=f"""
+TRYB PRACY: {mode}
+
+PLAN ARCHITEKTA (CO ZROBIĆ):
 {plan}
 
-Odpowiedź (tylko JSON, nic więcej):
-"""
+ZADANIE SZCZEGÓŁOWE:
+{task_desc}
 
-CODE_GEN_PROMPT = """
-TASK: Write complete Python code for file: {filename}
+AKTUALNY KOD PROJEKTU (KONTEKST):
+{code_context}
 
-REQUIREMENTS:
-{plan}
-
-PREVIOUS ISSUES (FIX THESE):
-{feedback}
-
-RULES:
-- Write ONLY executable Python code
-- NO markdown (no ```python```)
-- NO explanations
-- Start with imports
-- Include error handling
-- Make it production-ready
-
-BEGIN CODE FOR {filename}:
-"""
-
-def extract_json_list(text):
-    """Wyciąga listę plików z odpowiedzi modelu"""
+Rozpocznij od analizy zmian, a potem wygeneruj PEŁNE pliki.
+""")
+    
+    # ============================================
+    # 5. WYWOŁANIE MODELU (jak u kolegi!)
+    # ============================================
+    full_response = ""
     try:
-        match = re.search(r"```json\n(.*?)\n```", text, re.DOTALL)
-        if match: 
-            return json.loads(match.group(1))
+        print("--- WYSYŁANIE DO AI (To może chwilę potrwać)... ---")
         
-        match = re.search(r'\[.*\]', text, re.DOTALL)
-        if match: 
-            return json.loads(match.group())
+        # KLUCZOWE: Używamy listy [SystemMessage, HumanMessage]
+        response_obj = llm.invoke([sys_msg, user_msg])
+        full_response = response_obj.content
         
-        return json.loads(text)
+        print(f"-> Otrzymano {len(full_response)} znaków.")
+        
     except Exception as e:
-        print(f"⚠️  Błąd parsowania listy plików: {e}")
-        return ["main.py", "README.md"]
+        err = f"BŁĄD LLM: {e}"
+        print(err)
+        write_file("error_log.txt", err)
 
-def developer_node(state: ProjectState) -> ProjectState:
-    tech_stack = state.get("tech_stack", "")
-    qa_feedback = state.get("qa_feedback", "Pierwsza iteracja.")
-    iteration = state.get("iteration_count", 0)
+    # ============================================
+    # 6. PARSOWANIE I ZAPIS
+    # ============================================
+    saved_files = parse_and_save_files(full_response)
+    
+    # Jeśli Coder nic nie zwrócił, a mieliśmy pliki
+    if not saved_files and existing_files:
+        saved_files = existing_files
+    elif not saved_files:
+        error_content = f"Brak kodu. Odpowiedź AI:\n{full_response[:500]}"
+        write_file("error_report.txt", error_content)
+        saved_files.append("error_report.txt")
 
-    print(f"\n👨‍💻 Developer [Iteracja {iteration}]: Rozpoczynam pracę...")
-    
-    # === KROK 1: Lista plików ===
-    print("   📋 Pobieram listę plików...")
-    prompt_files = ChatPromptTemplate.from_messages([
-        ("system", FILE_LIST_PROMPT)
-    ])
-    
-    response_files = (prompt_files | llm).invoke({"plan": tech_stack})
-    files = extract_json_list(response_files.content)
-    
-    if not files:
-        files = ["main.py", "README.md"]
-    
-    print(f"   ✅ Zadania: {', '.join(files)}")
-    
+    # ============================================
+    # 7. WCZYTAJ PLIKI Z POWROTEM DO STATE
+    # ============================================
     generated = {}
-    logs = []
-    
-    # === KROK 2: Generuj kod ===
-    for idx, filename in enumerate(files, 1):
-        print(f"\n   [{idx}/{len(files)}] 🔨 Generuję: {filename}")
-        
-        prompt_code = ChatPromptTemplate.from_messages([
-            ("system", CODE_GEN_PROMPT)
-        ])
-        
-        print(f"      ⏳ Czekam na odpowiedź modelu...")
-        
-        response_code = (prompt_code | llm).invoke({
-            "filename": filename,
-            "plan": tech_stack,
-            "feedback": qa_feedback
-        })
-        
-        raw_content = response_code.content
-        
-        # ============================================
-        # DIAGNOSTYKA
-        # ============================================
-        print(f"      📊 Statystyki odpowiedzi:")
-        print(f"         • Długość: {len(raw_content)} znaków")
-        print(f"         • Typ: {type(raw_content)}")
-        print(f"         • Puste: {not raw_content or not raw_content.strip()}")
-        
-        if raw_content and len(raw_content.strip()) > 0:
-            # Pokaż podgląd
-            lines = raw_content.split('\n')
-            print(f"         • Liczba linii: {len(lines)}")
-            print(f"         • Pierwsza linia: {lines[0][:50]}")
-            
-            # Zapisz kod
-            save_msg = save_file.invoke({
-                "filename": filename, 
-                "code_content": raw_content
-            })
-            print(f"      {save_msg}")
-            
-            generated[filename] = raw_content
-            logs.append(f"{filename}: OK ({len(raw_content)} znaków)")
+    for fname in saved_files:
+        content = read_file(fname)
+        if content:
+            generated[fname] = content
         else:
-            # Model zwrócił puste
-            error_msg = f"# BŁĄD: Brak odpowiedzi od modelu\n# Plik: {filename}\n# Sprawdź Ollama\npass\n"
-            
-            save_file.invoke({
-                "filename": filename, 
-                "code_content": error_msg
-            })
-            
-            print(f"      ❌ Model nie wygenerował kodu!")
-            generated[filename] = error_msg
-            logs.append(f"{filename}: FAILED (pusty)")
+            print(f"⚠️  Nie można wczytać {fname}")
+            generated[fname] = f"# Błąd wczytania\npass\n"
 
-    print(f"\n✅ Developer zakończył. Plików: {len(generated)}")
-    
     return {
-        "generated_code": generated, 
-        "logs": logs
+        "generated_code": generated,
+        "logs": [f"Zaktualizowano pliki: {saved_files}"],
+        "iteration_count": current_revisions,
+        "feedback": None
     }

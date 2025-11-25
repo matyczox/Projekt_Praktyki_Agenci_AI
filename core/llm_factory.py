@@ -4,83 +4,58 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 load_dotenv()
 
-def _get_client_kwargs():
-    """
-    Konfiguracja klienta HTTP.
-    """
-    kwargs = {}
-    
-    # 1. SSL Fix
-    verify_ssl = os.getenv("OLLAMA_VERIFY_SSL", "True").lower() == "true"
-    kwargs["verify"] = verify_ssl
-    
-    # 2. Auth Token Fix
-    token = os.getenv("OLLAMA_TOKEN")
-    if token and token.strip():
-        kwargs["headers"] = {"Authorization": f"Bearer {token}"}
-        
-    return kwargs
+# Globalne ustawienia z .env
+OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_TOKEN = os.getenv("OLLAMA_TOKEN", "")
+VERIFY_SSL = os.getenv("OLLAMA_VERIFY_SSL", "False").lower() == "true"
 
+def get_llm(model_name: str, temperature: float = 0.1, num_ctx: int = 8192):
+    """
+    Tworzy instancję modelu z odpowiednimi parametrami (Timeout, SSL, Context).
+    UWAGA: Uproszczona wersja - BEZ dodatkowych model_kwargs które mogą powodować konflikty.
+    """
+    print(f"🔌 [SYSTEM] Inicjalizuję model...")
+    print(f"   -> Adres: {OLLAMA_URL}")
+    print(f"   -> Model: {model_name}")
+    print(f"   -> Context: {num_ctx} tokenów")
+    
+    return ChatOllama(
+        model=model_name,
+        base_url=OLLAMA_URL,
+        temperature=temperature,
+        num_ctx=num_ctx,
+        timeout=300.0,  # 5 minut (jak u kolegi)
+        
+        client_kwargs={
+            "verify": VERIFY_SSL,
+            "headers": {"Authorization": f"Bearer {OLLAMA_TOKEN}"} if OLLAMA_TOKEN else {}
+        }
+    )
+
+# Alias dla kompatybilności z Twoim kodem
 def get_chat_model(model_name: str = None, temperature: float = 0.2):
     """
-    Zwraca model ChatOllama z DUŻYM context window.
+    Wrapper dla kompatybilności z Twoim kodem.
     """
     if not model_name:
         model_name = os.getenv("MODEL_REASONING", "llama3.3:70b")
-        
-    print(f"🔌 [SYSTEM] Inicjalizuję połączenie z Ollama...")
-    print(f"   -> Adres: {os.getenv('OLLAMA_BASE_URL')}")
-    print(f"   -> Model: {model_name}")
-
-    # Dobierz context automatycznie na podstawie modelu
+    
+    # Dobierz context na podstawie modelu
     if "qwen" in model_name.lower():
-        ctx_size = 24576  # 24k dla Qwen
+        num_ctx = 24000  # Jak u kolegi dla Qwen
     elif "llama3.3" in model_name.lower():
-        ctx_size = 32768  # 32k dla Llama 3.3
-    elif "codellama" in model_name.lower():
-        ctx_size = 16384  # 16k dla CodeLlama
+        num_ctx = 32000
     else:
-        ctx_size = 8192   # Fallback
+        num_ctx = 8192
     
-    print(f"   -> Context: {ctx_size} tokenów")
-
-    # ============================================
-    # SPECJALNE OPCJE DLA QWEN (FIX EMPTY OUTPUT)
-    # ============================================
-    model_kwargs = {}
-    
-    if "qwen" in model_name.lower():
-        # Qwen potrzebuje tych parametrów żeby generować więcej
-        model_kwargs = {
-            "top_p": 0.9,           # Diversity sampling
-            "top_k": 40,            # Rozważ top 40 tokenów
-            "repeat_penalty": 1.1,  # Nie powtarzaj się
-            "num_predict": 2048,    # Generuj minimum 2048 tokenów (był default 128!)
-        }
-        print(f"   -> Tryb: Qwen Extended Generation")
-        print(f"   -> Min tokens: 2048")
-    # ============================================
-
-    return ChatOllama(
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
-        model=model_name,
-        temperature=temperature,
-        
-        # Zwiększony timeout dla dużych modeli
-        timeout=600.0,
-        
-        # Context window
-        num_ctx=ctx_size,
-        
-        # Dodatkowe parametry modelu
-        **model_kwargs,
-        
-        client_kwargs=_get_client_kwargs()
-    )
+    return get_llm(model_name, temperature=temperature, num_ctx=num_ctx)
 
 def get_embeddings_model():
     return OllamaEmbeddings(
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+        base_url=OLLAMA_URL,
         model=os.getenv("MODEL_EMBEDDINGS", "nomic-embed-text"),
-        client_kwargs=_get_client_kwargs()
+        client_kwargs={
+            "verify": VERIFY_SSL,
+            "headers": {"Authorization": f"Bearer {OLLAMA_TOKEN}"} if OLLAMA_TOKEN else {}
+        }
     )
