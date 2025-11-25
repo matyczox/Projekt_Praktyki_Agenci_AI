@@ -1,7 +1,8 @@
 langchain
 langchain-ollama
+langchain-community  # Dla RAG/ChromaDB
 langgraph
-chromadb
+chromadb  # Wektorowa DB dla RAG
 python-dotenv
 pydantic
 chainlit
