@@ -44,9 +44,9 @@ chroma_db/
 *.swp
 .DS_Store
 
-# --- Pliki Agenta ---
-# Folder, gdzie lądują wygenerowane projekty - nie chcemy ich w repo
-output_projects/
+# Ignoruj zawartość, ale nie sam folder
+output_projects/*
+!output_projects/.gitkeep
 
 # Folder public jest OK (tam jest styl), ale nie chcemy śmieci
 public/.gitkeep

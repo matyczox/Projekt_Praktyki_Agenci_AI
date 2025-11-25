@@ -4,6 +4,11 @@ from langchain_core.tools import tool
 # Folder, gdzie będą lądować projekty (bezpiecznik, żeby nie nadpisał Ci Windowsa)
 OUTPUT_DIR = "output_projects"
 
+# 🔧 KRYTYCZNE: Tworzymy folder automatycznie przy starcie
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    print(f"✅ Utworzono folder: {OUTPUT_DIR}")
+
 @tool
 def save_file(filename: str, code_content: str):
     """
