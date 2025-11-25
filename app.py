@@ -14,11 +14,10 @@ WORKSPACE_DIR = "./output_projects"
 def clear_workspace():
     """Usuwa wszystko z output_projects przy każdym nowym czacie"""
     if os.path.exists(WORKSPACE_DIR):
-        print(f"🧹 Czyszczę folder {WORKSPACE_DIR} przed nowym projektem...")
+        print(f"Czyszczę folder {WORKSPACE_DIR} przed nowym projektem...")
         shutil.rmtree(WORKSPACE_DIR)
     os.makedirs(WORKSPACE_DIR, exist_ok=True)
-    # Opcjonalnie: utwórz .gitkeep
-    open(os.path.join(WORKSPACE_DIR, ".gitkeep"), "a").close()
+    # ← usunąłem tworzenie .gitkeep
 
 def should_continue(state: ProjectState):
     if state["qa_status"] == "APPROVED" or state["iteration_count"] >= 5:
