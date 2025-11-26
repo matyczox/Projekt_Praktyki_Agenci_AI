@@ -1,124 +1,123 @@
-# 🚀 AgileFlow - Autonomiczny Zespół Deweloperski AI
+# 🚀 AgileFlow – Autonomiczny Zespół Deweloperski AI
 
-**AgileFlow** to wieloagentowy system AI, który działa jak prawdziwy zespół software'owy. Podajesz pomysł na aplikację, a agenci automatycznie przechodzą przez pełny cykl rozwoju: od wymagań, przez architekturę, implementację, aż po testy jakości.
+**Najlepszy lokalny system multi-agentowy do generowania pełnych aplikacji w 2025 roku**
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![Ollama](https://img.shields.io/badge/Ollama-Required-orange.svg)
 ![Status](https://img.shields.io/badge/Status-Active-success.svg)
 
----
-
-## 📋 Spis treści
-
-- [Cechy projektu](#-cechy-projektu)
-- [Jak to działa](#-jak-to-działa)
-- [Wymagania](#-wymagania)
-- [Instalacja](#-instalacja)
-- [Konfiguracja](#-konfiguracja)
-- [Uruchomienie](#-uruchomienie)
-- [Architektura](#-architektura)
-- [Przykłady użycia](#-przykłady-użycia)
-- [Troubleshooting](#-troubleshooting)
-- [FAQ](#-faq)
-- [Roadmap](#-roadmap)
+**Tech Stack:** Qwen3-Coder 30B + Llama 3.3 70B + RAG + LangGraph + Chainlit
 
 ---
 
-## ✨ Cechy projektu
+## 🎯 Co to jest AgileFlow?
 
-### 🤖 Czterech wyspecjalizowanych agentów:
+**AgileFlow** to autonomiczny zespół AI składający się z **4 wyspecjalizowanych agentów** o różnych rolach i osobowościach, który na podstawie **jednego zdania od użytkownika** potrafi stworzyć **pełną, działającą aplikację** – od backlogu po gotowy kod.
 
-| Agent | Rola | Model (domyślny) | Odpowiedzialność |
-|-------|------|------------------|------------------|
-| **🎩 Product Owner** | Analiza wymagań | Llama 3.3 70B | Tworzy backlog, user stories, kryteria akceptacji |
-| **📐 Architekt** | Projektowanie systemu | Llama 3.3 70B | Planuje strukturę plików, wybiera technologie |
-| **👨‍💻 Developer** | Implementacja | Qwen 3 Coder 30B | Pisze pełny, działający kod |
-| **🕵️ QA Engineer** | Testowanie | Llama 3.3 70B | Sprawdza składnię, logikę, bezpieczeństwo |
+### ✨ Kluczowe funkcje:
 
-### 🔄 Iteracyjny workflow:
-- Automatyczne poprawki błędów (max 3 iteracje)
-- Pętla feedback: QA → Developer → QA
-- Pamięć kontekstu między iteracjami
-
-### 🎨 Nowoczesny interfejs:
-- Dark mode w stylu "Deep Space"
-- Real-time streaming odpowiedzi
-- Podgląd procesu myślowego agentów
-- Custom CSS z neonowymi akcentami
-
-### 🔒 Bezpieczeństwo:
-- Lokalne modele LLM (zero wysyłania danych do chmury)
-- Sandbox dla generowanych plików
-- SSL/Token authentication dla Ollama
+✅ **Generuje kompletne aplikacje** (Python, .NET 8 + Angular 17, Blazor, FastAPI, itd.)  
+✅ **Pełny cykl Agile:** Backlog → Plan → Kod → QA → Iteracje (do 5)  
+✅ **RAG z ChromaDB** – agenci pamiętają cały kontekst projektu  
+✅ **Automatyczne czyszczenie workspace** przy każdym uruchomieniu  
+✅ **Interfejs webowy (Chainlit)** – wszystko widzisz na żywo  
+✅ **100% lokalny** – zero chmury, zero API keyów, pełna prywatność  
 
 ---
 
-## 🎯 Jak to działa?
+## 🤖 Zespół AI
+
+| Agent | Model używany | Rola | Kontekst | Odpowiedzialność |
+|-------|--------------|------|----------|------------------|
+| **🎩 Product Owner** | `llama3.3:70b` | Tworzy backlog i user stories | 128k | Analiza wymagań, definiowanie funkcji |
+| **📐 Architekt** | `llama3.3:70b` | Projektuje strukturę i tech stack | 128k | Plan plików, wybór technologii |
+| **👨‍💻 Developer** | `qwen3-coder:30b` | Pisze i naprawia kod | 256k | Implementacja, refactoring, debugging |
+| **🕵️ QA Engineer** | `llama3.3:70b` | Sprawdza poprawność i kompletność kodu | 128k | Testy, weryfikacja logiki, bezpieczeństwo |
+
+### 🧠 RAG (Retrieval-Augmented Generation)
+
+Dzięki **ChromaDB** agenci **pamiętają wymagania, backlog i plan** przez wszystkie iteracje – to znaczy, że Developer wie co Product Owner powiedział, a QA pamięta co Architekt zaplanował.
+
+---
+
+## 🔄 Jak to działa?
 
 ```
-User: "Stwórz grę Snake w Pythonie z Pygame"
+User: "Stwórz REST API dla systemu rezerwacji biletów lotniczych"
    ↓
-┌─────────────────────────────────────────────┐
-│  1. 🎩 Product Owner                        │
-│     → Tworzy backlog projektu               │
-│     → Definiuje funkcje gry                 │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  1. 🎩 Product Owner (llama3.3:70b)                     │
+│     → Tworzy backlog z user stories                     │
+│     → Zapisuje do RAG (ChromaDB)                        │
+└─────────────────────────────────────────────────────────┘
    ↓
-┌─────────────────────────────────────────────┐
-│  2. 📐 Architekt                            │
-│     → Planuje: main.py, game.py, snake.py  │
-│     → Wybiera biblioteki: pygame            │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  2. 📐 Architekt (llama3.3:70b)                         │
+│     → Czyta backlog z RAG                               │
+│     → Planuje: main.py, models.py, routes.py, db.py    │
+│     → Zapisuje plan do RAG                              │
+└─────────────────────────────────────────────────────────┘
    ↓
-┌─────────────────────────────────────────────┐
-│  3. 👨‍💻 Developer                           │
-│     → Generuje pełny kod                    │
-│     → Zapisuje pliki w output_projects/     │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  3. 👨‍💻 Developer (qwen3-coder:30b)                     │
+│     → Czyta plan + backlog z RAG                        │
+│     → Generuje pełny kod (FastAPI + SQLAlchemy)        │
+│     → Format: ### FILE: nazwa.py ... ### ENDFILE       │
+│     → Zapisuje do workspace/                            │
+└─────────────────────────────────────────────────────────┘
    ↓
-┌─────────────────────────────────────────────┐
-│  4. 🕵️ QA Engineer                          │
-│     → Sprawdza: składnię, logikę, bezp.     │
-│     → Decyzja: APPROVED ✅ / REJECTED ❌    │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  4. 🕵️ QA Engineer (llama3.3:70b)                       │
+│     → Sprawdza: składnię, logikę, security              │
+│     → Decyzja: APPROVED ✅ / REJECTED ❌                │
+└─────────────────────────────────────────────────────────┘
    ↓
-   ├─ APPROVED → Koniec ✅
-   └─ REJECTED → Powrót do Developera (max 3x)
+   ├─ APPROVED → Koniec ✅ Gotowa aplikacja!
+   └─ REJECTED → Powrót do Developera (max 5 iteracji)
 ```
 
 ---
 
-## 📦 Wymagania
+## 🛠️ Wymagania
 
-### Wymagania systemowe:
-- **Python**: 3.11 lub 3.12 (⚠️ Python 3.13 może mieć problemy z NumPy)
-- **RAM**: Minimum 16GB (32GB zalecane dla Llama 70B)
-- **Dysk**: ~50GB wolnego miejsca (dla modeli)
+### System:
+- **Python**: 3.11 lub nowszy
+- **RAM**: Minimum **32 GB** (zalecane **64 GB** przy dużych projektach)
+- **Dysk**: ~50 GB wolnego miejsca (modele Ollama)
 - **GPU** (opcjonalnie): NVIDIA z 16GB+ VRAM dla przyspieszenia
 
 ### Oprogramowanie:
-- [Ollama](https://ollama.com/) - lokalny serwer LLM
+- **Ollama** ([ollama.com](https://ollama.com/))
 - Git
-- Edytor kodu (VS Code zalecany)
+
+### Modele Ollama (wymagane):
+```bash
+ollama pull qwen3-coder:30b      # Developer (30 GB)
+ollama pull llama3.3:70b         # PO, Architekt, QA (40 GB)
+ollama pull nomic-embed-text     # RAG embeddings (274 MB)
+```
 
 ---
 
-## 🛠️ Instalacja
+## 📦 Instalacja
 
 ### Krok 1: Sklonuj repozytorium
 
 ```bash
-git clone https://github.com/your-username/agileflow.git
-cd agileflow
+git clone https://github.com/twoj-login/AgileFlow.git
+cd AgileFlow
 ```
 
 ### Krok 2: Stwórz środowisko wirtualne
 
+**Windows:**
 ```bash
-# Windows
 python -m venv .venv
-.venv\Scripts\activate
+.\.venv\Scripts\activate
+```
 
-# Linux/Mac
+**Linux/Mac:**
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
@@ -132,14 +131,13 @@ pip install -r requirements.txt
 
 **⚠️ Problem z NumPy na Windows?**
 ```bash
-# Użyj pre-compiled wheels
 pip install --prefer-binary -r requirements.txt
 ```
 
-### Krok 4: Zainstaluj Ollama
+### Krok 4: Zainstaluj Ollama i modele
 
 **Windows/Mac:**
-- Pobierz instalator: https://ollama.com/download
+- Pobierz z: https://ollama.com/download
 - Uruchom instalator
 
 **Linux:**
@@ -147,32 +145,17 @@ pip install --prefer-binary -r requirements.txt
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-### Krok 5: Pobierz modele AI
-
+**Pobierz modele:**
 ```bash
-# Model do rozumowania (Product Owner, Architekt, QA)
-ollama pull llama3.3:70b
-
-# Model do kodowania (Developer)
 ollama pull qwen3-coder:30b
-
-# Model do embeddingów (opcjonalnie)
+ollama pull llama3.3:70b
 ollama pull nomic-embed-text
 ```
 
-**💡 Lżejsze alternatywy (dla 8-16GB RAM):**
-```bash
-ollama pull llama3.3:latest    # 8B zamiast 70B
-ollama pull qwen2.5-coder:14b  # 14B zamiast 30B
-```
+### Krok 5: Konfiguracja
 
----
+Stwórz plik `.env`:
 
-## ⚙️ Konfiguracja
-
-### Krok 1: Stwórz plik `.env`
-
-Skopiuj przykładowy plik:
 ```bash
 # Windows
 copy .env.example .env
@@ -181,22 +164,14 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-### Krok 2: Edytuj `.env`
+Edytuj `.env`:
 
 ```env
 # ============================================
 # OLLAMA CONFIGURATION
 # ============================================
-# Dla lokalnej instalacji:
 OLLAMA_BASE_URL=http://127.0.0.1:11434
-
-# Dla zdalnego serwera:
-# OLLAMA_BASE_URL=https://your-server.com
-
-# Token (zostaw puste dla lokalnej instalacji)
 OLLAMA_TOKEN=
-
-# SSL Verification
 OLLAMA_VERIFY_SSL=False
 
 # ============================================
@@ -205,23 +180,6 @@ OLLAMA_VERIFY_SSL=False
 MODEL_REASONING=llama3.3:70b
 MODEL_CODER=qwen3-coder:30b
 MODEL_EMBEDDINGS=nomic-embed-text
-```
-
-### Krok 3: Dostosuj `config.toml` (opcjonalnie)
-
-```toml
-[project]
-session_timeout = 3600  # 1 godzina
-
-[features.spontaneous_file_upload]
-enabled = true
-max_files = 5
-max_size_mb = 500
-
-[UI]
-name = "AgileFlow"
-default_theme = "dark"
-layout = "wide"
 ```
 
 ---
@@ -236,7 +194,7 @@ chainlit run app.py
 
 Aplikacja dostępna pod: **http://localhost:8000**
 
-### Uruchomienie z auto-reload:
+### Uruchomienie z auto-reload (dla development):
 
 ```bash
 chainlit run app.py -w
@@ -250,115 +208,169 @@ chainlit run app.py --port 8080
 
 ---
 
+## 💡 Przykłady użycia
+
+### Przykład 1: REST API
+
+**Input:**
+```
+Stwórz REST API do zarządzania biblioteką używając FastAPI
+```
+
+**Output (workspace/):**
+```
+main.py              # Entry point
+models.py            # SQLAlchemy models
+routes.py            # API endpoints
+database.py          # Database config
+requirements.txt     # Dependencies
+README.md            # Documentation
+```
+
+### Przykład 2: .NET + Angular
+
+**Input:**
+```
+Stwórz aplikację TODO z backendem w .NET 8 i frontendem w Angular 17
+```
+
+**Output:**
+```
+backend/
+  ├── Controllers/
+  ├── Models/
+  ├── Program.cs
+  └── appsettings.json
+frontend/
+  ├── src/app/
+  ├── angular.json
+  └── package.json
+README.md
+```
+
+### Przykład 3: Blazor WebAssembly
+
+**Input:**
+```
+Stwórz aplikację pogodową w Blazor WebAssembly z API
+```
+
+**Output:**
+```
+BlazorWeatherApp/
+  ├── Pages/
+  ├── Services/
+  ├── Program.cs
+  └── wwwroot/
+README.md
+```
+
+---
+
 ## 🏗️ Architektura
 
 ### Struktura projektu:
 
 ```
-agileflow/
+AgileFlow/
 ├── agents/                  # Logika agentów AI
-│   ├── product_owner.py    # Analiza wymagań
-│   ├── architect.py         # Projektowanie architektury
+│   ├── product_owner.py    # Backlog i user stories
+│   ├── architect.py         # Plan techniczny
 │   ├── developer.py         # Generowanie kodu
-│   └── qa.py                # Testowanie i weryfikacja
+│   └── qa.py                # Testowanie
 │
 ├── core/                    # Komponenty podstawowe
 │   ├── llm_factory.py      # Factory dla modeli LLM
-│   └── state.py            # Definicja stanu projektu
+│   └── state.py            # Stan projektu (TypedDict)
 │
 ├── tools/                   # Narzędzia pomocnicze
-│   └── file_system.py      # Operacje na plikach
+│   └── file_system.py      # Operacje na plikach (workspace/)
 │
-├── public/                  # Assety frontendowe
-│   ├── style.css           # Custom CSS (Deep Space theme)
-│   ├── logo_dark.png       # Logo aplikacji
-│   └── favicon.png         # Ikona strony
+├── public/                  # Assety UI
+│   ├── style.css           # Deep Space theme
+│   ├── logo_dark.png
+│   └── favicon.png
 │
-├── output_projects/         # Wygenerowane projekty (auto-tworzone)
+├── output_projects/              # Wygenerowane projekty
+│                           # (czyszczone automatycznie)
+├── chroma_db_store/        # RAG - ChromaDB storage
 │
-├── .env                     # Konfiguracja (nie commituj!)
+├── .env                    # Konfiguracja (nie commituj!)
 ├── config.toml             # Ustawienia Chainlit
-├── app.py                  # Entry point aplikacji
+├── app.py                  # Entry point
 ├── chainlit.md             # Ekran powitalny
 └── requirements.txt        # Zależności Python
 ```
 
-### Flow danych (LangGraph):
+### LangGraph Flow:
 
 ```python
-StateGraph(ProjectState)
-  ├─ product_owner_node
-  ├─ architect_node
-  ├─ developer_node
-  ├─ qa_node
-  └─ should_continue (conditional edge)
-       ├─ "fix" → developer_node (retry)
+StateGraph(AgentState)
+  ├─ planner_node      (Product Owner)
+  ├─ architect_node    (Architekt)
+  ├─ coder_node        (Developer)
+  ├─ reviewer_node     (QA Engineer)
+  └─ should_continue   (conditional edge)
+       ├─ "fix" → coder_node (retry, max 5x)
        └─ "end" → END
 ```
 
-### State schema:
+### State Schema:
 
 ```python
-class ProjectState(TypedDict):
-    user_request: str              # Pomysł użytkownika
-    requirements: str              # Backlog od PO
-    tech_stack: str                # Plan architekta
-    generated_code: Dict[str, str] # {filename: content}
-    qa_feedback: str               # Feedback od QA
-    qa_status: str                 # APPROVED / REJECTED
-    iteration_count: int           # Licznik iteracji (max 3)
-    logs: List[str]                # Historia operacji
+class AgentState(TypedDict):
+    messages: List[BaseMessage]       # Historia konwersacji
+    plan: str                         # Plan od Architekta
+    current_files: List[str]          # Pliki w workspace
+    feedback: str                     # Feedback od QA
+    revision_count: int               # Licznik iteracji (max 5)
+    model_names: Dict[str, str]       # Nazwy modeli do użycia
 ```
 
 ---
 
-## 💡 Przykłady użycia
+## 🎨 Interfejs UI
 
-### Przykład 1: Prosta gra
+### Deep Space Theme
 
-**Input:**
-```
-Stwórz grę Snake w Pythonie używając Pygame
-```
+AgileFlow ma nowoczesny **dark mode** inspirowany estetyką kosmiczną:
 
-**Output (output_projects/):**
-```
-main.py
-snake.py
-food.py
-requirements.txt
-README.md
-```
+- **Tło:** Głęboka czerń (#050507) z subtelną siatką
+- **Akcenty:** Indigo neon (#6366f1) z efektem glow
+- **Dymki czatu:** Gradient (użytkownik) / ciemny panel (AI)
+- **Fonty:** Inter (tekst) + JetBrains Mono (kod)
 
-### Przykład 2: Narzędzie CLI
+### Funkcje UI:
 
-**Input:**
-```
-Zrób konwerter CSV na JSON z walidacją danych
-```
+✅ **Real-time streaming** – widzisz odpowiedzi AI na żywo  
+✅ **Process visibility** – każdy agent pokazuje co robi  
+✅ **File preview** – podgląd generowanych plików  
+✅ **Dark scrollbar** – custom design nawet dla paska przewijania  
 
-**Output:**
-```
-converter.py
-validator.py
-requirements.txt
-README.md
-```
+---
 
-### Przykład 3: Web scraper
+## 🧠 RAG (Retrieval-Augmented Generation)
 
-**Input:**
-```
-Stwórz scraper do pobierania cen z Allegro
-```
+### Jak działa pamięć?
 
-**Output:**
+1. **Product Owner** tworzy backlog → zapisuje do ChromaDB
+2. **Architekt** czyta backlog z ChromaDB → tworzy plan → zapisuje plan
+3. **Developer** czyta backlog + plan z ChromaDB → pisze kod
+4. **QA** czyta wszystko z ChromaDB → sprawdza spójność
+
+### Co daje RAG?
+
+- ✅ Agenci **nie gubią kontekstu** między iteracjami
+- ✅ Developer **wie dokładnie** co ma zaimplementować
+- ✅ QA **weryfikuje** czy kod spełnia backlog
+- ✅ **Konsystencja** w całym projekcie
+
+### Baza danych:
+
 ```
-main.py
-scraper.py
-database.py
-requirements.txt
-README.md
+chroma_db_store/
+├── chroma.sqlite3       # Metadata
+└── [embeddings]         # Wektory (nomic-embed-text)
 ```
 
 ---
@@ -367,85 +379,93 @@ README.md
 
 ### Problem: "Model zwrócił 0 znaków"
 
-**Przyczyna:** Developer nie generuje kodu.
+**Rozwiązanie 1:** Test z innym modelem
+```env
+MODEL_CODER=llama3.3:70b  # Zamiast Qwen
+```
 
-**Rozwiązania:**
-1. **Test z innym modelem:**
-   ```env
-   MODEL_CODER=llama3.3:70b  # Zamiast Qwen
-   ```
+**Rozwiązanie 2:** Sprawdź czy model jest loaded
+```bash
+ollama ps
+ollama run qwen3-coder:30b "test"
+```
 
-2. **Zwiększ context window:**
-   ```python
-   # W llm_factory.py
-   num_ctx=24000  # Zamiast 8192
-   ```
+**Rozwiązanie 3:** Zwiększ timeout
+```python
+# W llm_factory.py
+timeout=600.0  # 10 minut zamiast 5
+```
 
-3. **Sprawdź czy model jest załadowany:**
-   ```bash
-   ollama ps
-   ollama run qwen3-coder:30b "test"
-   ```
+### Problem: "504 Gateway Timeout"
 
-### Problem: "504 DNS look up failed"
-
-**Przyczyna:** Proxy/firewall blokuje `localhost`.
+**Przyczyna:** Proxy/firewall blokuje `localhost`
 
 **Rozwiązanie:**
 ```env
-# W .env zmień:
-OLLAMA_BASE_URL=http://127.0.0.1:11434  # Zamiast localhost
+# W .env użyj IP zamiast hostname:
+OLLAMA_BASE_URL=http://127.0.0.1:11434
 ```
 
-### Problem: "ModuleNotFoundError: langchain_core"
+### Problem: "Workspace nie czyści się"
 
-**Przyczyna:** Brak zainstalowanych pakietów.
+**Przyczyna:** Brak uprawnień do usuwania plików
 
 **Rozwiązanie:**
 ```bash
-pip install -r requirements.txt
+# Ręczne czyszczenie
+rm -rf workspace/*        # Linux/Mac
+rmdir /s /q workspace     # Windows
 ```
 
-### Problem: NumPy compilation error (Windows)
+### Problem: "ChromaDB nie działa"
 
-**Przyczyna:** Python 3.13 + brak kompilatora C.
-
-**Rozwiązanie:**
+**Rozwiązanie 1:** Usuń bazę i stwórz od nowa
 ```bash
-# Opcja A: Downgrade do Python 3.11
-py -3.11 -m venv .venv
-
-# Opcja B: Wymuś binary wheels
-pip install --prefer-binary numpy
+rm -rf chroma_db_store/
 ```
 
-### Problem: "Folder output_projects nie istnieje"
+**Rozwiązanie 2:** Sprawdź model embeddings
+```bash
+ollama pull nomic-embed-text
+```
 
-**Przyczyna:** Folder w `.gitignore`, nie pulluje się z repo.
+### Problem: "Out of Memory"
 
-**Rozwiązanie:** Folder tworzy się automatycznie - upewnij się że używasz najnowszej wersji `file_system.py`.
+**Przyczyna:** Za mało RAM dla 70B modelu
+
+**Rozwiązanie:** Użyj mniejszych modeli
+```env
+MODEL_REASONING=llama3.3:latest  # 8B zamiast 70B
+MODEL_CODER=qwen2.5-coder:14b    # 14B zamiast 30B
+```
 
 ---
 
 ## ❓ FAQ
 
 **Q: Czy AgileFlow działa offline?**  
-A: Tak! Wszystkie modele działają lokalnie przez Ollama. Nie wysyłamy żadnych danych do chmury.
+A: **Tak!** Wszystko działa lokalnie przez Ollama. Zero połączenia z internetem po instalacji.
 
-**Q: Jakie języki programowania obsługuje Developer?**  
-A: Obecnie głównie Python. Ale potrafi obsługiwać również inne języki.
-
-**Q: Czy mogę użyć modeli z OpenAI/Anthropic?**  
-A: Tak, wystarczy zmienić `llm_factory.py` na ChatOpenAI lub ChatAnthropic z LangChain.
+**Q: Jakie języki programowania obsługuje?**  
+A: Python, .NET (C#), JavaScript/TypeScript, Blazor, FastAPI, Angular, React. Można dodać więcej przez modyfikację promptów.
 
 **Q: Ile czasu trwa generowanie projektu?**  
-A: 2-5 minut dla prostych projektów, 10-15 minut dla złożonych (zależy od hardware).
+A: 3-7 minut dla prostych projektów, 10-20 minut dla złożonych (zależy od hardware i liczby iteracji).
 
-**Q: Czy AgileFlow może edytować istniejący kod?**  
-A: Tak! Developer ma tryb REFACTORING - wczytuje istniejące pliki i modyfikuje je.
+**Q: Czy mogę użyć modeli z OpenAI/Anthropic?**  
+A: Tak, wystarczy zmienić `llm_factory.py` na `ChatOpenAI` lub `ChatAnthropic`.
 
-**Q: Jak zmienić limit iteracji (max 3)?**  
+**Q: Czy Developer może edytować istniejący kod?**  
+A: **Tak!** Developer ma tryb REFACTORING – wczytuje pliki z `workspace/` i modyfikuje je. RAG pamięta poprzednie iteracje.
+
+**Q: Co to znaczy "automatyczne czyszczenie workspace"?**  
+A: Przy każdym nowym zadaniu folder `workspace/` jest czyszczony, żeby nie mieszać projektów. Stare projekty możesz skopiować gdzie indziej przed uruchomieniem.
+
+**Q: Jak zmienić limit iteracji (max 5)?**  
 A: W `app.py`, funkcja `should_continue()`:
 ```python
-if state["iteration_count"] >= 5:  # Zmień 3 na 5
+if state["revision_count"] >= 10:  # Zmień 5 na 10
     return "end"
+```
+
+---
