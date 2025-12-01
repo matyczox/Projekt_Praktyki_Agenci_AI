@@ -77,25 +77,112 @@ def save_file_direct(filename: str, code_content: str):
 
 def parse_code_blocks(text: str) -> dict:
     """
-    Ekstrahuje pliki z odpowiedzi LLM w formacie:
-    --- filename ---
-    ```language
-    kod
-    ```
+    UNIWERSALNE parsowanie - obsługuje WSZYSTKIE formaty:
+    1. --- filename ---
+    2. ### filename
+    3. ## filename
+    4. **filename**
+    5. Filename:
     """
     code_dict = {}
     
-    # Regex: wyciąga nazwę pliku i kod z bloku
-    pattern = r'---\s*([^\n]+?)\s*---\s*```(?:\w+)?\n(.*?)```'
-    matches = re.findall(pattern, text, re.DOTALL)
+    # STRATEGIA 1: Format --- filename ---
+    pattern1 = r'---\s*([^\n]+?)\s*---\s*```(?:\w+)?\n(.*?)```'
+    matches1 = re.findall(pattern1, text, re.DOTALL)
     
-    for filename, code in matches:
+    for filename, code in matches1:
         filename = filename.strip()
         code = code.strip()
         if filename and code:
             code_dict[filename] = code
+    
+    # Jeśli znaleziono coś - wracamy
+    if code_dict:
+        print(f"✅ Parsowanie: Format '--- filename ---' → {len(code_dict)} plików")
+        return code_dict
+    
+    # STRATEGIA 2: Format ### filename lub ## filename
+    # Qwen często używa markdownowych nagłówków
+    pattern2 = r'#{2,3}\s+([^\n]+?)\s*\n+```(?:\w+)?\n(.*?)```'
+    matches2 = re.findall(pattern2, text, re.DOTALL)
+    
+    for filename, code in matches2:
+        filename = filename.strip()
+        code = code.strip()
+        if filename and code:
+            code_dict[filename] = code
+    
+    if code_dict:
+        print(f"✅ Parsowanie: Format '### filename' → {len(code_dict)} plików")
+        return code_dict
+    
+    # STRATEGIA 3: Format **filename** (bold)
+    pattern3 = r'\*\*([^\*]+?)\*\*\s*\n+```(?:\w+)?\n(.*?)```'
+    matches3 = re.findall(pattern3, text, re.DOTALL)
+    
+    for filename, code in matches3:
+        filename = filename.strip()
+        code = code.strip()
+        if filename and code:
+            code_dict[filename] = code
+    
+    if code_dict:
+        print(f"✅ Parsowanie: Format '**filename**' → {len(code_dict)} plików")
+        return code_dict
+    
+    # STRATEGIA 4: Filename: (dwukropek)
+    pattern4 = r'([a-zA-Z0-9_\-\.\/]+\.[a-z]+):\s*\n+```(?:\w+)?\n(.*?)```'
+    matches4 = re.findall(pattern4, text, re.DOTALL | re.IGNORECASE)
+    
+    for filename, code in matches4:
+        filename = filename.strip()
+        code = code.strip()
+        if filename and code:
+            code_dict[filename] = code
+    
+    if code_dict:
+        print(f"✅ Parsowanie: Format 'filename:' → {len(code_dict)} plików")
+        return code_dict
+    
+    # STRATEGIA 5 (OSTATNIA DESKA RATUNKU): Wszystkie bloki kodu + próba zgadnięcia nazwy
+    # Jeśli nic nie zadziałało - wyciągamy wszystkie bloki ```
+    pattern5 = r'```(?:\w+)?\n(.*?)```'
+    all_blocks = re.findall(pattern5, text, re.DOTALL)
+    
+    if all_blocks:
+        print(f"⚠️ Fallback: Znaleziono {len(all_blocks)} bloków kodu bez nazw - próbuję zgadnąć...")
+        
+        # Próbujemy znaleźć nazwy plików w tekście przed blokami
+        lines = text.split('\n')
+        for i, block in enumerate(all_blocks):
+            # Szukamy nazwy pliku w 5 liniach przed blokiem
+            block_start = text.find('```' + block[:50])
+            text_before = text[:block_start]
+            lines_before = text_before.split('\n')[-5:]
             
-    return code_dict
+            # Szukamy czegoś co wygląda jak nazwa pliku
+            for line in reversed(lines_before):
+                # Regex na nazwę pliku (np. main.py, index.html)
+                file_match = re.search(r'([a-zA-Z0-9_\-]+\.[a-z]+)', line)
+                if file_match:
+                    filename = file_match.group(1)
+                    code_dict[filename] = block.strip()
+                    print(f"  ✅ Zgadłem: {filename}")
+                    break
+            else:
+                # Jeśli nie znaleziono - używamy generycznej nazwy
+                ext = ".py" if "def " in block or "import " in block else ".txt"
+                filename = f"file_{i+1}{ext}"
+                code_dict[filename] = block.strip()
+                print(f"  ⚠️ Generyczna nazwa: {filename}")
+        
+        return code_dict
+    
+    # Jeśli NAPRAWDĘ nic nie znaleziono
+    print("❌ BŁĄD PARSOWANIA: Nie znaleziono żadnego kodu!")
+    print("📄 Pierwsze 500 znaków odpowiedzi:")
+    print(text[:500])
+    return {}
 
 def extract_file_list(tech_stack_response: str) -> list:
     """
@@ -167,8 +254,15 @@ kod
     print("💻 Developer: Wysyłam zapytanie do LLM...")
     response = (prompt | llm).invoke({})
     
-    # 4. Parsujemy odpowiedź
+    # 4. Parsujemy odpowiedź (NOWA FUNKCJA!)
     generated_code = parse_code_blocks(response.content)
+    
+    if not generated_code:
+        print("❌ KRYTYCZNY BŁĄD: Parser nie wyciągnął żadnego kodu!")
+        print("📄 Zapisuję surową odpowiedź do debug.txt...")
+        with open("debug_llm_response.txt", "w", encoding="utf-8") as f:
+            f.write(response.content)
+        print("✅ Sprawdź plik debug_llm_response.txt")
     
     print(f"💻 Developer: Wygenerowano {len(generated_code)} plików")
     

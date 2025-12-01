@@ -40,12 +40,11 @@ def get_chat_model(model_name: str = None, temperature: float = 0.2):
         base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         model=model_name,
         temperature=temperature,
-        
-        # Fixy sieciowe
-        timeout=300.0,    
-        num_ctx=8192,
+        timeout=600.0,
+        num_ctx=8192,           # 32K – idealny balans moc/szybkość/VRAM
+        num_predict=8192,        # max 8K na output (i tak więcej nie potrzebujesz)
         client_kwargs=_get_client_kwargs()
-    )
+)
 
 def get_embeddings_model():
     return OllamaEmbeddings(
