@@ -1,7 +1,9 @@
 langchain
 langchain-ollama
+langchain-community
 langgraph
 chromadb
 python-dotenv
 pydantic
+pydantic-settings
 chainlit

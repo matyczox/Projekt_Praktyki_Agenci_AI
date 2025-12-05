@@ -1,67 +1,77 @@
 # agents/product_owner.py
-from langchain_core.prompts import ChatPromptTemplate
-from core.llm_factory import get_chat_model
-from core.state import ProjectState
-import os
-
-llm = get_chat_model(os.getenv("MODEL_REASONING", "qwen2.5-coder:14b"), temperature=0.2)
-
-SYSTEM_PROMPT = """
-Jesteś Technical Leadem (AI Copilot).
-Twoim JEDYNYM zadaniem jest przełożyć pomysł użytkownika na CZYSTĄ, TECHNICZNĄ SPECYFIKACJĘ.
-
-ZASADY ABSOLUTNE:
-- Piszesz TYLKO specyfikację techniczną (funkcje, biblioteki, logika, wymagania).
-- NIGDY nie piszesz o strukturze plików, nazwach modułów, architekturze projektu.
-- NIGDY nie sugerujesz "main.py", "game.py", "snake.py" itp.
-- NIGDY nie piszesz sekcji "Architektura", "Moduły", "Plan projektu".
-- Nie generujesz JSON-a z listą plików.
-- Nie wspominasz o README.md.
-
-DOZWOLONE sekcje:
-- Cele funkcjonalne
-- Wymagane biblioteki
-- Opis mechanik gry
-- Sterowanie
-- Warunki końca gry
-- Punktacja
-- Inne czysto techniczne rzeczy
-
-PRZYKŁAD POPRAWNEJ ODPOWIEDZI:
-
-Gra Snake w Pythonie z użyciem pygame.
-
-Funkcjonalności:
-- Wąż porusza się po siatce, sterowany strzałkami
-- Zjada jabłka → rośnie i dostaje punkty
-- Kolizja z granicą lub sobą → koniec gry
-- Punktacja wyświetlana na ekranie
-- Możliwość restartu po przegranej
-
-Wymagane biblioteki:
-- pygame
-- random
-
-Mechanika:
-- Plansza 600x600 px, siatka 20x20 pól
-- Wąż zaczyna z długością 3, prędkość rośnie co 10 punktów
-- Jabłko pojawia się losowo po zjedzeniu
+"""
+Agent Product Owner (Tech Lead).
+Tworzy specyfikację techniczną na podstawie pomysłu użytkownika.
 """
 
-def product_owner_node(state: ProjectState) -> ProjectState:
-    print("\nTech Lead: Analizuję zadanie...")
+from typing import Dict, Any
+from agents.base import BaseAgent
+from core.state import ProjectState
+from prompts import PRODUCT_OWNER_PROMPT
+from config import settings
+
+
+class ProductOwnerAgent(BaseAgent):
+    """
+    Tech Lead - przekłada pomysł użytkownika na specyfikację techniczną.
+    Nie zajmuje się architekturą ani strukturą plików.
+    """
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("user", f"Zadanie użytkownika:\n{state['user_request']}")
-    ])
+    @property
+    def name(self) -> str:
+        return "ProductOwner"
     
-    response = (prompt | llm).invoke({})
+    @property
+    def system_prompt(self) -> str:
+        return PRODUCT_OWNER_PROMPT
     
-    print("TOKENS → Input:", response.response_metadata.get("prompt_eval_count", "?"), 
-          "| Output:", response.response_metadata.get("eval_count", "?"))
+    def __init__(self):
+        super().__init__(
+            model_name=settings.model_reasoning,
+            temperature=0.2
+        )
     
-    return {
-        "requirements": response.content.strip(),
-        "logs": ["Tech Lead przygotował czystą specyfikację."]
-    }
+    def process(self, state: ProjectState) -> Dict[str, Any]:
+        """
+        Przetwarza request użytkownika i generuje specyfikację.
+        
+        Args:
+            state: Stan z user_request
+        
+        Returns:
+            Dict z requirements i logs
+        """
+        user_request = state.get("user_request", "")
+        
+        if not user_request:
+            self.logger.warning("Brak user_request w stanie!")
+            return {
+                "requirements": "",
+                "logs": ["Tech Lead: Brak zadania od użytkownika"]
+            }
+        
+        user_message = f"Zadanie użytkownika:\n{user_request}"
+        
+        response = self.invoke(user_message)
+        
+        if response is None:
+            return {
+                "requirements": "",
+                "logs": ["Tech Lead: Błąd generowania specyfikacji"]
+            }
+        
+        self.logger.info("Specyfikacja gotowa")
+        
+        return {
+            "requirements": response.content.strip(),
+            "logs": ["Tech Lead przygotował czystą specyfikację."]
+        }
+
+
+# Instancja dla LangGraph node
+_agent = ProductOwnerAgent()
+
+
+def product_owner_node(state: ProjectState) -> Dict[str, Any]:
+    """Node function dla LangGraph."""
+    return _agent(state)
